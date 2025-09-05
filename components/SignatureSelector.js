@@ -1,6 +1,6 @@
 // Componente para seleccionar coordenadas de firma en PDF
 import { useState, useRef, useEffect } from 'react'
-import { X, PenTool, Save, RotateCcw } from 'lucide-react'
+import { X, PenTool, Save, RotateCcw, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
 
 export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const canvasRef = useRef(null)
@@ -27,14 +27,20 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       // Cargar PDF usando pdf-lib (simplificado para demo)
       const arrayBuffer = await pdfFile.arrayBuffer()
       
-      // Para este demo, simularemos la carga del PDF
-      // En una implementación real, usarías pdf-lib o PDF.js para renderizar
-      setPdfDoc({ buffer: arrayBuffer })
-      setTotalPages(1) // Simplificado
+      // Simular análisis del PDF para obtener número de páginas
+      // En una implementación real, usarías pdf-lib o PDF.js para obtener esta información
+      const simulatedPages = Math.floor(Math.random() * 5) + 1 // Entre 1 y 5 páginas
+      
+      setPdfDoc({ 
+        buffer: arrayBuffer,
+        name: pdfFile.name,
+        size: pdfFile.size
+      })
+      setTotalPages(simulatedPages)
       setCurrentPage(0)
       
-      // Simular renderizado del PDF en canvas
-      renderPage(0)
+      // Renderizar la primera página automáticamente
+      await renderPage(0)
       
     } catch (error) {
       console.error('Error cargando PDF:', error)
@@ -49,24 +55,108 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     
     const ctx = canvas.getContext('2d')
     
-    // Para este demo, crearemos un canvas simple con texto
-    // En una implementación real, renderizarías el PDF real
-    canvas.width = 600
-    canvas.height = 800
+    // Configurar canvas con tamaño estándar de página A4
+    canvas.width = 595  // A4 width en puntos
+    canvas.height = 842 // A4 height en puntos
     
     // Fondo blanco
     ctx.fillStyle = 'white'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
-    // Simular contenido del PDF
-    ctx.fillStyle = 'black'
-    ctx.font = '16px Arial'
-    ctx.fillText('Documento PDF - Página ' + (pageNum + 1), 50, 50)
-    ctx.fillText('Contenido del documento...', 50, 100)
-    ctx.fillText('Selecciona el área donde se colocará la firma', 50, 150)
+    // Simular contenido realista del PDF
+    ctx.fillStyle = '#333'
     
-    // Dibujar borde
-    ctx.strokeStyle = '#ccc'
+    // Header del documento
+    ctx.font = 'bold 18px Arial'
+    ctx.fillText(`${pdfDoc?.name || 'Documento.pdf'}`, 50, 50)
+    
+    ctx.font = '12px Arial'
+    ctx.fillStyle = '#666'
+    ctx.fillText(`Página ${pageNum + 1} de ${totalPages}`, 50, 70)
+    
+    // Contenido del documento simulado
+    ctx.fillStyle = '#333'
+    ctx.font = '14px Arial'
+    
+    const sampleContent = [
+      'CONTRATO DE TRABAJO',
+      '',
+      'Entre la empresa XYZ S.A., representada por su Director General,',
+      'y el empleado [NOMBRE_EMPLEADO], se establece el siguiente',
+      'contrato de trabajo bajo las siguientes condiciones:',
+      '',
+      '1. OBJETO DEL CONTRATO',
+      'El empleado se compromete a prestar sus servicios profesionales',
+      'en el área de [DEPARTAMENTO] de la empresa.',
+      '',
+      '2. DURACIÓN',
+      'El presente contrato tendrá una duración indefinida, iniciando',
+      'el [FECHA_INICIO].',
+      '',
+      '3. REMUNERACIÓN',
+      'El empleado percibirá una remuneración mensual de $[SALARIO],',
+      'pagadera los últimos días de cada mes.',
+      '',
+      '4. OBLIGACIONES',
+      '- Cumplir con el horario establecido',
+      '- Mantener confidencialidad de la información',
+      '- Seguir las políticas de la empresa',
+      '',
+      '5. FIRMA',
+      'Para constancia de lo acordado, las partes firman el presente',
+      'contrato en la fecha indicada.'
+    ]
+    
+    let yPosition = 120
+    sampleContent.forEach((line, index) => {
+      if (line === '') {
+        yPosition += 10
+      } else if (line.includes('CONTRATO') || line.includes('OBJETO') || line.includes('DURACIÓN') || line.includes('REMUNERACIÓN') || line.includes('OBLIGACIONES') || line.includes('FIRMA')) {
+        ctx.font = 'bold 14px Arial'
+        ctx.fillText(line, 50, yPosition)
+        ctx.font = '14px Arial'
+        yPosition += 25
+      } else if (line.startsWith('-')) {
+        ctx.fillText(line, 70, yPosition)
+        yPosition += 20
+      } else {
+        ctx.fillText(line, 50, yPosition)
+        yPosition += 20
+      }
+    })
+    
+    // Líneas para firma (si estamos en la última página)
+    if (pageNum === totalPages - 1) {
+      ctx.strokeStyle = '#ccc'
+      ctx.lineWidth = 1
+      ctx.setLineDash([])
+      
+      // Línea para firma del empleado
+      ctx.beginPath()
+      ctx.moveTo(50, canvas.height - 150)
+      ctx.lineTo(250, canvas.height - 150)
+      ctx.stroke()
+      
+      ctx.font = '12px Arial'
+      ctx.fillStyle = '#666'
+      ctx.fillText('Firma del Empleado', 50, canvas.height - 130)
+      
+      // Línea para firma de la empresa
+      ctx.beginPath()
+      ctx.moveTo(350, canvas.height - 150)
+      ctx.lineTo(550, canvas.height - 150)
+      ctx.stroke()
+      
+      ctx.fillText('Firma de la Empresa', 350, canvas.height - 130)
+      
+      // Fecha
+      ctx.fillText('Fecha: _______________', 50, canvas.height - 80)
+    }
+    
+    // Dibujar borde de la página
+    ctx.strokeStyle = '#ddd'
+    ctx.lineWidth = 1
+    ctx.setLineDash([])
     ctx.strokeRect(0, 0, canvas.width, canvas.height)
     
     // Dibujar área de firma existente si hay una
@@ -103,6 +193,12 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   
   const handleMouseDown = (e) => {
     const pos = getMousePos(e)
+    
+    // Limpiar área de firma existente al empezar a dibujar una nueva
+    if (signatureArea) {
+      setSignatureArea(null)
+    }
+    
     setIsDrawing(true)
     setStartPos(pos)
     setCurrentRect({ x: pos.x, y: pos.y, width: 0, height: 0 })
@@ -202,6 +298,14 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     }
   }
   
+  const goToLastPage = () => {
+    if (totalPages > 1 && currentPage < totalPages - 1) {
+      setCurrentPage(totalPages - 1)
+      setSignatureArea(null)
+      renderPage(totalPages - 1)
+    }
+  }
+  
   if (loading) {
     return (
       <div className="modal-overlay">
@@ -247,19 +351,31 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
                 onClick={prevPage}
                 disabled={currentPage === 0}
                 className="btn btn-sm btn-outline"
+                title="Página anterior"
               >
-                ←
+                <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 min-w-[100px] text-center">
                 Página {currentPage + 1} de {totalPages}
               </span>
               <button
                 onClick={nextPage}
                 disabled={currentPage >= totalPages - 1}
                 className="btn btn-sm btn-outline"
+                title="Página siguiente"
               >
-                →
+                <ChevronRight className="w-4 h-4" />
               </button>
+              {totalPages > 1 && (
+                <button
+                  onClick={goToLastPage}
+                  disabled={currentPage >= totalPages - 1}
+                  className="btn btn-sm btn-outline"
+                  title="Ir a la última página"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
             
             {signatureArea && (
@@ -303,9 +419,11 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
             <strong>Instrucciones:</strong>
             <ul className="list-disc list-inside mt-1 space-y-1">
               <li>Haz clic y arrastra para seleccionar el área donde se colocará la firma</li>
+              <li>Solo se permite <strong>una área de firma</strong> por documento</li>
+              <li>Al crear una nueva área, la anterior se eliminará automáticamente</li>
               <li>El área debe tener un tamaño mínimo de 50×20 píxeles</li>
               <li>Puedes cambiar de página si el documento tiene múltiples páginas</li>
-              <li>Haz clic en "Limpiar" para borrar la selección actual</li>
+              <li>Usa el botón ⏭️ para ir directamente a la última página</li>
             </ul>
           </div>
         </div>

@@ -11,7 +11,8 @@ import {
   AlertCircle,
   Loader,
   FolderOpen,
-  PenTool
+  PenTool,
+  RefreshCw
 } from 'lucide-react'
 
 // Componentes
@@ -239,6 +240,25 @@ export default function Home() {
     }
   }
   
+  const refreshFolders = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/folders')
+      if (response.ok) {
+        const data = await response.json()
+        setFolders(data.data)
+        addNotification('Carpetas actualizadas exitosamente', 'success')
+      } else {
+        throw new Error('Error actualizando carpetas')
+      }
+    } catch (error) {
+      console.error('Error actualizando carpetas:', error)
+      addNotification('Error actualizando carpetas', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
   const tabs = [
     { id: 'upload', label: 'Configuración', icon: Settings },
     { id: 'users', label: 'Usuarios', icon: Users },
@@ -382,22 +402,15 @@ export default function Home() {
                 </h2>
               </div>
               <div className="card-body space-y-4">
-                {/* Naming Pattern */}
+                {/* Naming Pattern - Fixed to Username */}
                 <div className="form-group">
                   <label className="form-label">Patrón de nomenclatura</label>
-                  <select
-                    className="form-select"
-                    value={duplicateConfig.namingPattern}
-                    onChange={(e) => setDuplicateConfig(prev => ({
-                      ...prev,
-                      namingPattern: e.target.value
-                    }))}
-                  >
-                    <option value="username">Username</option>
-                    <option value="email">Email</option>
-                    <option value="employee_id">ID Empleado</option>
-                    <option value="full_name">Nombre Completo</option>
-                  </select>
+                  <div className="flex items-center space-x-2">
+                    <div className="form-input bg-gray-50 text-gray-700 cursor-not-allowed flex items-center">
+                      <span>✓ Username</span>
+                    </div>
+                    <span className="text-sm text-gray-500">(Fijo para evitar errores)</span>
+                  </div>
                 </div>
                 
                 {/* File Prefix */}
@@ -472,20 +485,34 @@ export default function Home() {
                 {/* Folder Selection */}
                 <div className="form-group">
                   <label className="form-label">Carpeta de destino</label>
-                  <select
-                    className="form-select"
-                    value={selectedFolder?.id || ''}
-                    onChange={(e) => {
-                      const folder = folders.find(f => f.id === e.target.value)
-                      setSelectedFolder(folder)
-                    }}
-                  >
-                    {folders.map(folder => (
-                      <option key={folder.id} value={folder.id}>
-                        {folder.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center space-x-2">
+                    <select
+                      className="form-select flex-1"
+                      value={selectedFolder?.id || ''}
+                      onChange={(e) => {
+                        const folder = folders.find(f => f.id === e.target.value)
+                        setSelectedFolder(folder)
+                      }}
+                    >
+                      {folders.map(folder => (
+                        <option key={folder.id} value={folder.id}>
+                          {folder.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={refreshFolders}
+                      disabled={loading}
+                      className="btn btn-outline btn-sm"
+                      title="Actualizar carpetas"
+                    >
+                      {loading ? (
+                        <Loader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Notification Option */}
