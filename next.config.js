@@ -5,7 +5,7 @@ const nextConfig = {
   
   // Configuración para Vercel
   experimental: {
-    serverComponentsExternalPackages: ['pdf-lib'],
+    serverComponentsExternalPackages: ['pdf-lib', 'pdfjs-dist'],
   },
   
   // Configuración de archivos
@@ -18,15 +18,14 @@ const nextConfig = {
         crypto: false,
       };
     }
+    
+    // Excluir pdfjs-dist del bundle del servidor
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push('pdfjs-dist');
+    }
+    
     return config;
-  },
-  
-  // Configuración de API
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-    responseLimit: '50mb',
   },
   
   // Headers de seguridad
