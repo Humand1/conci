@@ -500,7 +500,7 @@ export default function Home() {
                       }))}
                       className="mr-2"
                     />
-                    Notificar al usuario por email
+                    Notificar al usuario
                   </label>
                 </div>
               </div>
