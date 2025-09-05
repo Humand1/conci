@@ -41,10 +41,11 @@ Una aplicación web moderna para duplicar PDFs basada en segmentaciones de usuar
    
    Edita `.env.local` con tus valores reales:
    ```env
-   HUMAND_API_BASE_URL=https://api.humand.co
-   HUMAND_API_TOKEN=tu_token_aqui
-   REDASH_API_BASE_URL=https://tu-instancia.redash.io
-   REDASH_API_KEY=tu_api_key_aqui
+   HUMAND_API_BASE_URL=https://api-prod.humand.co/public/api/v1
+   HUMAND_API_TOKEN=tu_api_key_de_humand
+   REDASH_API_BASE_URL=https://redash.humand.co/api/queries
+   REDASH_API_KEY=tu_api_key_de_redash
+   REDASH_FOLDERS_QUERY_ID=17520
    ```
 
 4. **Ejecutar en desarrollo**
