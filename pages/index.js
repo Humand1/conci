@@ -405,11 +405,8 @@ export default function Home() {
                 {/* Naming Pattern - Fixed to Username */}
                 <div className="form-group">
                   <label className="form-label">Patrón de nomenclatura</label>
-                  <div className="flex items-center space-x-2">
-                    <div className="form-input bg-gray-50 text-gray-700 cursor-not-allowed flex items-center">
-                      <span>✓ Username</span>
-                    </div>
-                    <span className="text-sm text-gray-500">(Fijo para evitar errores)</span>
+                  <div className="form-input bg-gray-50 text-gray-700 cursor-not-allowed flex items-center">
+                    <span>✓ Username</span>
                   </div>
                 </div>
                 
