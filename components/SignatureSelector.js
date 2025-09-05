@@ -1,14 +1,10 @@
 // Componente para seleccionar coordenadas de firma en PDF
 import { useState, useRef, useEffect } from 'react'
 import { X, PenTool, Save, RotateCcw, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
-import * as pdfjsLib from 'pdfjs-dist'
+import dynamic from 'next/dynamic'
 
-// Configurar el worker de PDF.js
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-}
-
-export default function SignatureSelector({ pdfFile, onClose, onSave }) {
+// Componente que solo se ejecuta en el cliente
+function SignatureSelectorClient({ pdfFile, onClose, onSave }) {
   const canvasRef = useRef(null)
   const [pdfDoc, setPdfDoc] = useState(null)
   const [currentPage, setCurrentPage] = useState(0)
@@ -19,10 +15,33 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const [signatureArea, setSignatureArea] = useState(null)
   const [scale, setScale] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [pdfjsLib, setPdfjsLib] = useState(null)
+  
+  // Cargar PDF.js dinámicamente solo en el cliente
+  useEffect(() => {
+    const loadPDFJS = async () => {
+      if (typeof window !== 'undefined' && !pdfjsLib) {
+        try {
+          const pdfjs = await import('pdfjs-dist')
+          
+          // Configurar el worker
+          pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+          
+          setPdfjsLib(pdfjs)
+        } catch (error) {
+          console.error('Error cargando PDF.js:', error)
+        }
+      }
+    }
+    
+    loadPDFJS()
+  }, [])
   
   useEffect(() => {
-    loadPDF()
-  }, [pdfFile])
+    if (pdfjsLib && pdfFile) {
+      loadPDF()
+    }
+  }, [pdfFile, pdfjsLib])
   
   const loadPDF = async () => {
     if (!pdfFile) return
@@ -393,3 +412,22 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     </div>
   )
 }
+
+// Exportar el componente usando dynamic de Next.js para que solo se ejecute en el cliente
+const SignatureSelector = dynamic(() => Promise.resolve(SignatureSelectorClient), {
+  ssr: false,
+  loading: () => (
+    <div className="modal-overlay">
+      <div className="modal-container max-w-4xl">
+        <div className="flex items-center justify-center p-12">
+          <div className="text-center">
+            <div className="spinner spinner-lg mb-4" />
+            <p className="text-lg text-gray-600">Cargando selector de firma...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+})
+
+export default SignatureSelector
