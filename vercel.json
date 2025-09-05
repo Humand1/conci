@@ -1,22 +1,8 @@
 {
-  "version": 2,
-  "name": "pdf-multiplicador-web",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "functions": {
     "pages/api/**/*.js": {
-      "maxDuration": 300
+      "maxDuration": 60
     }
   },
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "regions": ["iad1"],
-  "github": {
-    "silent": true
-  }
+  "regions": ["iad1"]
 }
