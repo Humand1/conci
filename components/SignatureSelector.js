@@ -14,6 +14,8 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const [scale, setScale] = useState(1.5) // Escala fija como en DYLO
   const [loading, setLoading] = useState(true)
   const [pdfjsLib, setPdfjsLib] = useState(null)
+  const [isRendering, setIsRendering] = useState(false) // Flag para evitar renderizados concurrentes
+  const renderTaskRef = useRef(null) // Referencia para cancelar tareas de renderizado
   
   // Cargar PDF.js usando configuración global como DYLO
   useEffect(() => {
@@ -251,9 +253,20 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   
   const renderPageWithTempRect = async (tempRect) => {
     const canvas = canvasRef.current
-    if (!canvas || !pdfDoc) return
+    if (!canvas || !pdfDoc || isRendering) return
+    
+    // Cancelar renderizado anterior si existe
+    if (renderTaskRef.current) {
+      try {
+        renderTaskRef.current.cancel()
+      } catch (error) {
+        // Ignorar errores de cancelación
+      }
+    }
     
     try {
+      setIsRendering(true)
+      
       // Re-renderizar la página base
       const page = await pdfDoc.getPage(currentPage + 1)
       const viewport = page.getViewport({ scale })
@@ -266,15 +279,24 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
         viewport: viewport
       }
       
-      await page.render(renderContext).promise
+      // Guardar referencia de la tarea de renderizado
+      const renderTask = page.render(renderContext)
+      renderTaskRef.current = renderTask
       
-      // Dibujar rectángulo temporal
-      if (tempRect) {
+      await renderTask.promise
+      
+      // Dibujar rectángulo temporal solo si no se canceló
+      if (tempRect && !renderTask._internalRenderTask.cancelled) {
         drawSignatureArea(ctx, tempRect)
       }
       
     } catch (error) {
-      console.error('Error re-renderizando con rectángulo temporal:', error)
+      if (error.name !== 'RenderingCancelledException') {
+        console.error('Error re-renderizando con rectángulo temporal:', error)
+      }
+    } finally {
+      setIsRendering(false)
+      renderTaskRef.current = null
     }
   }
   

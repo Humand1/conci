@@ -44,6 +44,7 @@ export default function Home() {
     setSelectedFolder,
     setDuplicatedFiles,
     setUploadResults,
+    setSignatureCoordinates,
     setDuplicateConfig
   } = useApp()
   
