@@ -119,6 +119,15 @@ export default async function handler(req, res) {
           }]
         }
         
+        // DEBUG: Información antes de subir
+        console.log(`\n🔄 PROCESANDO DOCUMENTO ${i + 1}/${documents.length}`)
+        console.log(`📁 Archivo: ${document.filename}`)
+        console.log(`👤 Usuario: ${document.user.full_name} (ID: ${document.user.id})`)
+        console.log(`📂 Folder ID: ${folder_id}`)
+        console.log(`✍️ Signature Status: ${signatureStatus}`)
+        console.log(`📍 Coordenadas formateadas:`, formattedCoordinates)
+        console.log(`✉️ Send Notification: ${send_notification}`)
+        
         // Subir documento
         const uploadResult = await apiClient.uploadDocument(
           document.user.id || document.user.employee_internal_id,
@@ -132,6 +141,19 @@ export default async function handler(req, res) {
           }
         )
         
+        // DEBUG: Resultado de la subida
+        console.log(`\n📊 RESULTADO DE SUBIDA:`)
+        console.log(`✅ Éxito: ${uploadResult.success}`)
+        console.log(`📊 Status: ${uploadResult.status}`)
+        if (uploadResult.success) {
+          console.log(`📄 Data:`, JSON.stringify(uploadResult.data, null, 2))
+        } else {
+          console.log(`❌ Error: ${uploadResult.error}`)
+          if (uploadResult.fullError) {
+            console.log(`🔍 Error completo:`, JSON.stringify(uploadResult.fullError, null, 2))
+          }
+        }
+        
         if (uploadResult.success) {
           results.push({
             filename: document.filename,
@@ -143,6 +165,7 @@ export default async function handler(req, res) {
             status: 'success',
             uploadData: uploadResult.data
           })
+          console.log(`✅ Documento agregado a resultados exitosos`)
         } else {
           errors.push({
             filename: document.filename,
@@ -153,8 +176,10 @@ export default async function handler(req, res) {
             },
             status: 'error',
             error: uploadResult.error,
-            statusCode: uploadResult.status
+            statusCode: uploadResult.status,
+            fullError: uploadResult.fullError
           })
+          console.log(`❌ Documento agregado a errores`)
         }
         
       } catch (error) {
