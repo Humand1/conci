@@ -4,18 +4,19 @@ import { X, PenTool, Save, RotateCcw, ChevronLeft, ChevronRight, ChevronsRight }
 
 export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const canvasRef = useRef(null)
+  const overlayRef = useRef(null)
   const [pdfDoc, setPdfDoc] = useState(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 })
-  const [currentRect, setCurrentRect] = useState(null)
   const [signatureArea, setSignatureArea] = useState(null)
   const [scale, setScale] = useState(1.5) // Escala fija como en DYLO
   const [loading, setLoading] = useState(true)
   const [pdfjsLib, setPdfjsLib] = useState(null)
-  const [isRendering, setIsRendering] = useState(false) // Flag para evitar renderizados concurrentes
-  const renderTaskRef = useRef(null) // Referencia para cancelar tareas de renderizado
+  
+  // Estados de interacción como DYLO
+  const [signatureMode, setSignatureMode] = useState('none') // 'none', 'selecting', 'creating'
+  const [dragStartX, setDragStartX] = useState(0)
+  const [dragStartY, setDragStartY] = useState(0)
   
   // Cargar PDF.js usando configuración global como DYLO
   useEffect(() => {
@@ -212,114 +213,148 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     ctx.restore()
   }
   
-  const getMousePos = (e) => {
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    return {
-      x: (e.clientX - rect.left) * (canvas.width / rect.width),
-      y: (e.clientY - rect.top) * (canvas.height / rect.height)
+  // Configurar event listeners como DYLO
+  useEffect(() => {
+    const handleDocumentMouseMove = (e) => {
+      if (signatureMode === 'creating') {
+        const canvas = canvasRef.current
+        const overlay = overlayRef.current
+        if (!canvas || !overlay) return
+        
+        const rect = canvas.getBoundingClientRect()
+        const currentX = e.clientX - rect.left
+        const currentY = e.clientY - rect.top
+        
+        // Calcular dimensiones del rectángulo
+        const width = Math.abs(currentX - dragStartX)
+        const height = Math.abs(currentY - dragStartY)
+        const left = Math.min(dragStartX, currentX)
+        const top = Math.min(dragStartY, currentY)
+        
+        // Actualizar el overlay visual - SOLO CSS, NO re-renderizar PDF
+        overlay.style.display = 'block'
+        overlay.style.left = left + 'px'
+        overlay.style.top = top + 'px'
+        overlay.style.width = width + 'px'
+        overlay.style.height = height + 'px'
+      }
     }
-  }
+    
+    const handleDocumentMouseUp = (e) => {
+      if (signatureMode === 'creating') {
+        const canvas = canvasRef.current
+        const overlay = overlayRef.current
+        if (!canvas || !overlay) return
+        
+        const rect = canvas.getBoundingClientRect()
+        const endX = e.clientX - rect.left
+        const endY = e.clientY - rect.top
+        
+        // Calcular coordenadas finales en coordenadas del canvas
+        const canvasWidth = canvas.width
+        const canvasHeight = canvas.height
+        
+        const x1 = Math.min(dragStartX, endX) / rect.width * canvasWidth
+        const y1 = Math.min(dragStartY, endY) / rect.height * canvasHeight
+        const x2 = Math.max(dragStartX, endX) / rect.width * canvasWidth
+        const y2 = Math.max(dragStartY, endY) / rect.height * canvasHeight
+        
+        // Validar que el área tenga un tamaño mínimo
+        if (Math.abs(x2 - x1) > 50 && Math.abs(y2 - y1) > 20) {
+          const newSignatureArea = {
+            x: x1,
+            y: y1,
+            width: x2 - x1,
+            height: y2 - y1
+          }
+          setSignatureArea(newSignatureArea)
+          
+          // Actualizar overlay para mostrar área guardada
+          overlay.style.border = '2px solid #28a745'
+          overlay.style.backgroundColor = 'rgba(40, 167, 69, 0.1)'
+          
+          console.log('✅ Área de firma creada sin titileo')
+        } else {
+          overlay.style.display = 'none'
+          alert('El área de firma debe ser más grande (mínimo 50×20 píxeles)')
+        }
+        
+        setSignatureMode('none')
+        if (canvasRef.current) {
+          canvasRef.current.style.cursor = 'default'
+        }
+      }
+    }
+    
+    // Agregar event listeners al document como DYLO
+    document.addEventListener('mousemove', handleDocumentMouseMove)
+    document.addEventListener('mouseup', handleDocumentMouseUp)
+    
+    return () => {
+      document.removeEventListener('mousemove', handleDocumentMouseMove)
+      document.removeEventListener('mouseup', handleDocumentMouseUp)
+    }
+  }, [signatureMode, dragStartX, dragStartY])
   
-  const handleMouseDown = (e) => {
-    const pos = getMousePos(e)
+  const handleCanvasMouseDown = (e) => {
+    e.preventDefault()
+    const canvas = canvasRef.current
+    const overlay = overlayRef.current
+    if (!canvas || !overlay) return
+    
+    const rect = canvas.getBoundingClientRect()
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
     
     // Limpiar área de firma existente al empezar a dibujar una nueva
     if (signatureArea) {
       setSignatureArea(null)
+      overlay.style.display = 'none'
     }
     
-    setIsDrawing(true)
-    setStartPos(pos)
-    setCurrentRect({ x: pos.x, y: pos.y, width: 0, height: 0 })
+    // Iniciar modo de creación como DYLO
+    setSignatureMode('creating')
+    setDragStartX(mouseX)
+    setDragStartY(mouseY)
+    
+    canvas.style.cursor = 'crosshair'
+    
+    // Inicializar el overlay
+    overlay.style.display = 'block'
+    overlay.style.left = mouseX + 'px'
+    overlay.style.top = mouseY + 'px'
+    overlay.style.width = '0px'
+    overlay.style.height = '0px'
+    overlay.style.border = '2px dashed #007bff'
+    overlay.style.backgroundColor = 'rgba(0, 123, 255, 0.1)'
   }
   
-  const handleMouseMove = (e) => {
-    if (!isDrawing) return
+  const handleCanvasMouseMove = (e) => {
+    // Solo para cambiar cursor, NO para dibujar
+    if (signatureMode !== 'none') return
     
-    const pos = getMousePos(e)
-    const rect = {
-      x: Math.min(startPos.x, pos.x),
-      y: Math.min(startPos.y, pos.y),
-      width: Math.abs(pos.x - startPos.x),
-      height: Math.abs(pos.y - startPos.y)
-    }
-    
-    setCurrentRect(rect)
-    
-    // Re-renderizar página y dibujar rectángulo temporal
-    renderPageWithTempRect(rect)
-  }
-  
-  const renderPageWithTempRect = async (tempRect) => {
     const canvas = canvasRef.current
-    if (!canvas || !pdfDoc || isRendering) return
-    
-    // Cancelar renderizado anterior si existe
-    if (renderTaskRef.current) {
-      try {
-        renderTaskRef.current.cancel()
-      } catch (error) {
-        // Ignorar errores de cancelación
-      }
-    }
-    
-    try {
-      setIsRendering(true)
-      
-      // Re-renderizar la página base
-      const page = await pdfDoc.getPage(currentPage + 1)
-      const viewport = page.getViewport({ scale })
-      
-      const ctx = canvas.getContext('2d')
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      
-      const renderContext = {
-        canvasContext: ctx,
-        viewport: viewport
-      }
-      
-      // Guardar referencia de la tarea de renderizado
-      const renderTask = page.render(renderContext)
-      renderTaskRef.current = renderTask
-      
-      await renderTask.promise
-      
-      // Dibujar rectángulo temporal solo si no se canceló
-      if (tempRect && !renderTask._internalRenderTask.cancelled) {
-        drawSignatureArea(ctx, tempRect)
-      }
-      
-    } catch (error) {
-      if (error.name !== 'RenderingCancelledException') {
-        console.error('Error re-renderizando con rectángulo temporal:', error)
-      }
-    } finally {
-      setIsRendering(false)
-      renderTaskRef.current = null
+    if (canvas) {
+      canvas.style.cursor = 'crosshair'
     }
   }
   
-  const handleMouseUp = () => {
-    if (!isDrawing || !currentRect) return
-    
-    setIsDrawing(false)
-    
-    // Validar tamaño mínimo
-    if (currentRect.width < 50 || currentRect.height < 20) {
-      alert('El área de firma debe ser más grande (mínimo 50×20 píxeles)')
-      setCurrentRect(null)
-      renderPage(currentPage)
-      return
+  const enableSignatureSelection = () => {
+    setSignatureMode('selecting')
+    const canvas = canvasRef.current
+    if (canvas) {
+      canvas.style.cursor = 'crosshair'
     }
-    
-    setSignatureArea(currentRect)
-    setCurrentRect(null)
+    console.log('Modo selección activado - Haga clic y arrastre para seleccionar el área de firma')
   }
   
   const clearSignature = () => {
     setSignatureArea(null)
-    renderPage(currentPage)
+    const overlay = overlayRef.current
+    if (overlay) {
+      overlay.style.display = 'none'
+    }
+    console.log('Área de firma eliminada')
   }
   
   const handleSave = async () => {
@@ -398,6 +433,11 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     if (currentPage < totalPages - 1) {
       setCurrentPage(currentPage + 1)
       setSignatureArea(null)
+      // Limpiar overlay al cambiar de página
+      const overlay = overlayRef.current
+      if (overlay) {
+        overlay.style.display = 'none'
+      }
       renderPage(currentPage + 1)
     }
   }
@@ -406,6 +446,11 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     if (currentPage > 0) {
       setCurrentPage(currentPage - 1)
       setSignatureArea(null)
+      // Limpiar overlay al cambiar de página
+      const overlay = overlayRef.current
+      if (overlay) {
+        overlay.style.display = 'none'
+      }
       renderPage(currentPage - 1)
     }
   }
@@ -414,6 +459,11 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     if (totalPages > 1 && currentPage < totalPages - 1) {
       setCurrentPage(totalPages - 1)
       setSignatureArea(null)
+      // Limpiar overlay al cambiar de página
+      const overlay = overlayRef.current
+      if (overlay) {
+        overlay.style.display = 'none'
+      }
       renderPage(totalPages - 1)
     }
   }
@@ -510,17 +560,26 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
           </div>
         </div>
         
-        {/* Canvas */}
+        {/* Canvas con Overlay */}
         <div className="flex-1 overflow-auto p-6">
           <div className="flex justify-center">
-            <div className="border border-gray-300 shadow-lg">
+            <div className="border border-gray-300 shadow-lg relative">
               <canvas
                 ref={canvasRef}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
+                onMouseDown={handleCanvasMouseDown}
+                onMouseMove={handleCanvasMouseMove}
                 className="cursor-crosshair max-w-full h-auto"
                 style={{ maxHeight: '70vh' }}
+              />
+              {/* Div overlay para mostrar área de selección - como DYLO */}
+              <div
+                ref={overlayRef}
+                style={{
+                  position: 'absolute',
+                  display: 'none',
+                  pointerEvents: 'none',
+                  zIndex: 10
+                }}
               />
             </div>
           </div>
@@ -537,7 +596,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
               <li>El área debe tener un tamaño mínimo de 50×20 píxeles</li>
               <li>Puedes cambiar de página si el documento tiene múltiples páginas</li>
               <li>Usa el botón ⏭️ para ir directamente a la última página</li>
-              <li><strong>Nuevo:</strong> Renderizado optimizado para mejor precisión</li>
+              <li><strong>✅ Sin titileo:</strong> Arquitectura optimizada basada en DYLO</li>
             </ul>
           </div>
         </div>
