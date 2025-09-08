@@ -1,10 +1,8 @@
 // Componente para seleccionar coordenadas de firma en PDF
 import { useState, useRef, useEffect } from 'react'
 import { X, PenTool, Save, RotateCcw, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
-import dynamic from 'next/dynamic'
 
-// Componente que solo se ejecuta en el cliente
-function SignatureSelectorClient({ pdfFile, onClose, onSave }) {
+export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const canvasRef = useRef(null)
   const [pdfDoc, setPdfDoc] = useState(null)
   const [currentPage, setCurrentPage] = useState(0)
@@ -421,22 +419,3 @@ function SignatureSelectorClient({ pdfFile, onClose, onSave }) {
     </div>
   )
 }
-
-// Exportar el componente usando dynamic de Next.js para que solo se ejecute en el cliente
-const SignatureSelector = dynamic(() => Promise.resolve(SignatureSelectorClient), {
-  ssr: false,
-  loading: () => (
-    <div className="modal-overlay">
-      <div className="modal-container max-w-4xl">
-        <div className="flex items-center justify-center p-12">
-          <div className="text-center">
-            <div className="spinner spinner-lg mb-4" />
-            <p className="text-lg text-gray-600">Cargando selector de firma...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-})
-
-export default SignatureSelector
