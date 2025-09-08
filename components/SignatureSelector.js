@@ -11,7 +11,6 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const [signatureArea, setSignatureArea] = useState(null)
   const [scale, setScale] = useState(1.5) // Escala fija como en DYLO
   const [loading, setLoading] = useState(true)
-  const [firstPageRendered, setFirstPageRendered] = useState(false)
   const [pdfjsLib, setPdfjsLib] = useState(null)
   
   // Estados de interacción como DYLO
@@ -81,19 +80,10 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     }
   }, [pdfFile, pdfjsLib])
   
-  // useEffect adicional para forzar renderizado cuando el canvas esté disponible
-  useEffect(() => {
-    if (pdfDoc && canvasRef.current && !firstPageRendered) {
-      console.log('Forzando renderizado inicial del canvas...')
-      renderPage(currentPage)
-    }
-  }, [pdfDoc, firstPageRendered, currentPage])
-  
   const loadPDF = async () => {
     if (!pdfFile) return
     
     try {
-      setLoading(true)
       console.log('Iniciando carga de PDF...')
       
       // Cargar PDF usando PDF.js con manejo robusto como DYLO
@@ -107,15 +97,15 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       
       console.log(`PDF cargado: ${pdf.numPages} páginas`)
       
-      // Renderizar la primera página automáticamente y esperar a que termine
+      // Renderizar la primera página inmediatamente como en DYLO
       await renderPage(0, pdf)
-      setFirstPageRendered(true)
+      
+      // Solo ocultar loading después de que la página esté renderizada
+      setLoading(false)
       
     } catch (error) {
       console.error('Error cargando PDF:', error)
       handlePDFLoadError()
-      setFirstPageRendered(true)
-    } finally {
       setLoading(false)
     }
   }
