@@ -70,10 +70,15 @@ function SignatureSelectorClient({ pdfFile, onClose, onSave }) {
   
   const renderPage = async (pageNum, pdf = null) => {
     const canvas = canvasRef.current
-    if (!canvas || !pdfDoc) return
+    const pdfDocument = pdf || pdfDoc
+    
+    if (!canvas || !pdfDocument) {
+      console.log('Canvas o PDF no disponible:', { canvas: !!canvas, pdfDocument: !!pdfDocument })
+      return
+    }
     
     try {
-      const pdfDocument = pdf || pdfDoc
+      console.log(`Renderizando página ${pageNum + 1} de ${pdfDocument.numPages}`)
       const page = await pdfDocument.getPage(pageNum + 1) // PDF.js usa índices basados en 1
       
       const viewport = page.getViewport({ scale: 1.5 })
@@ -84,6 +89,9 @@ function SignatureSelectorClient({ pdfFile, onClose, onSave }) {
       
       const ctx = canvas.getContext('2d')
       
+      // Limpiar canvas completamente antes de renderizar
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      
       // Renderizar la página del PDF
       const renderContext = {
         canvasContext: ctx,
@@ -91,6 +99,7 @@ function SignatureSelectorClient({ pdfFile, onClose, onSave }) {
       }
       
       await page.render(renderContext).promise
+      console.log('Página renderizada exitosamente')
       
       // Dibujar área de firma existente si hay una
       if (signatureArea) {
@@ -155,7 +164,7 @@ function SignatureSelectorClient({ pdfFile, onClose, onSave }) {
     setCurrentRect({ x: pos.x, y: pos.y, width: 0, height: 0 })
   }
   
-  const handleMouseMove = (e) => {
+  const handleMouseMove = async (e) => {
     if (!isDrawing) return
     
     const pos = getMousePos(e)
@@ -168,10 +177,10 @@ function SignatureSelectorClient({ pdfFile, onClose, onSave }) {
     
     setCurrentRect(rect)
     
-    // Redibujar canvas
-    renderPage(currentPage)
+    // Redibujar canvas completamente (esto limpia áreas anteriores)
+    await renderPage(currentPage)
     
-    // Dibujar rectángulo temporal
+    // Dibujar solo el rectángulo temporal actual
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     drawSignatureArea(ctx, rect)
