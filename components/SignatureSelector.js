@@ -14,6 +14,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const [scale, setScale] = useState(1)
   const [loading, setLoading] = useState(true)
   const [pdfjsLib, setPdfjsLib] = useState(null)
+  const [pdfImageData, setPdfImageData] = useState(null) // Cache del PDF renderizado
   
   // Cargar PDF.js dinámicamente solo en el cliente
   useEffect(() => {
@@ -99,6 +100,9 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       await page.render(renderContext).promise
       console.log('Página renderizada exitosamente')
       
+      // Guardar el estado del PDF renderizado (sin áreas de firma)
+      setPdfImageData(ctx.getImageData(0, 0, canvas.width, canvas.height))
+      
       // Dibujar área de firma existente si hay una
       if (signatureArea) {
         drawSignatureArea(ctx, signatureArea)
@@ -120,6 +124,9 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       ctx.textAlign = 'center'
       ctx.fillText('Error cargando página del PDF', canvas.width / 2, canvas.height / 2)
       ctx.textAlign = 'left'
+      
+      // Guardar también el estado de error
+      setPdfImageData(ctx.getImageData(0, 0, canvas.width, canvas.height))
     }
   }
   
@@ -162,8 +169,8 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     setCurrentRect({ x: pos.x, y: pos.y, width: 0, height: 0 })
   }
   
-  const handleMouseMove = async (e) => {
-    if (!isDrawing) return
+  const handleMouseMove = (e) => {
+    if (!isDrawing || !pdfImageData) return
     
     const pos = getMousePos(e)
     const rect = {
@@ -175,12 +182,12 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     
     setCurrentRect(rect)
     
-    // Redibujar canvas completamente (esto limpia áreas anteriores)
-    await renderPage(currentPage)
-    
-    // Dibujar solo el rectángulo temporal actual
+    // Restaurar la imagen original del PDF desde el cache
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
+    ctx.putImageData(pdfImageData, 0, 0)
+    
+    // Dibujar solo el rectángulo temporal actual
     drawSignatureArea(ctx, rect)
   }
   
