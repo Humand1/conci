@@ -1,4 +1,4 @@
-// Componente para seleccionar coordenadas de firma en PDF
+// Componente para seleccionar coordenadas de firma en PDF - Mejorado con técnicas de DYLO
 import { useState, useRef, useEffect } from 'react'
 import { X, PenTool, Save, RotateCcw, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
 
@@ -11,22 +11,22 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [currentRect, setCurrentRect] = useState(null)
   const [signatureArea, setSignatureArea] = useState(null)
-  const [scale, setScale] = useState(1)
+  const [scale, setScale] = useState(1.5) // Escala fija como en DYLO
   const [loading, setLoading] = useState(true)
   const [pdfjsLib, setPdfjsLib] = useState(null)
-  const [pdfImageData, setPdfImageData] = useState(null) // Cache del PDF renderizado
   
-  // Cargar PDF.js dinámicamente solo en el cliente
+  // Cargar PDF.js dinámicamente con configuración robusta como DYLO
   useEffect(() => {
     const loadPDFJS = async () => {
       if (typeof window !== 'undefined' && !pdfjsLib) {
         try {
           const pdfjs = await import('pdfjs-dist')
           
-          // Configurar el worker
-          pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+          // Configurar el worker con CDN fijo como en DYLO
+          pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
           
           setPdfjsLib(pdfjs)
+          console.log('PDF.js cargado exitosamente con worker fijo')
         } catch (error) {
           console.error('Error cargando PDF.js:', error)
         }
@@ -47,8 +47,9 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     
     try {
       setLoading(true)
+      console.log('Iniciando carga de PDF...')
       
-      // Cargar PDF usando PDF.js
+      // Cargar PDF usando PDF.js con manejo robusto como DYLO
       const arrayBuffer = await pdfFile.arrayBuffer()
       const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
       const pdf = await loadingTask.promise
@@ -57,13 +58,36 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       setTotalPages(pdf.numPages)
       setCurrentPage(0)
       
+      console.log(`PDF cargado: ${pdf.numPages} páginas`)
+      
       // Renderizar la primera página automáticamente
       await renderPage(0, pdf)
       
     } catch (error) {
       console.error('Error cargando PDF:', error)
+      handlePDFLoadError()
     } finally {
       setLoading(false)
+    }
+  }
+  
+  const handlePDFLoadError = () => {
+    // Fallback robusto como en DYLO
+    const canvas = canvasRef.current
+    if (canvas) {
+      const ctx = canvas.getContext('2d')
+      canvas.width = 595
+      canvas.height = 842
+      
+      ctx.fillStyle = 'white'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      ctx.fillStyle = '#666'
+      ctx.font = '16px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText('Error cargando PDF', canvas.width / 2, canvas.height / 2)
+      ctx.fillText('Intente recargar el archivo', canvas.width / 2, canvas.height / 2 + 30)
+      ctx.textAlign = 'left'
     }
   }
   
@@ -78,17 +102,20 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     
     try {
       console.log(`Renderizando página ${pageNum + 1} de ${pdfDocument.numPages}`)
-      const page = await pdfDocument.getPage(pageNum + 1) // PDF.js usa índices basados en 1
       
-      const viewport = page.getViewport({ scale: 1.5 })
+      // Obtener página (PDF.js usa índices basados en 1)
+      const page = await pdfDocument.getPage(pageNum + 1)
       
-      // Configurar canvas con el tamaño real de la página del PDF
+      // Usar escala fija como en DYLO para consistencia
+      const viewport = page.getViewport({ scale })
+      
+      // Configurar canvas con dimensiones del viewport
       canvas.width = viewport.width
       canvas.height = viewport.height
       
       const ctx = canvas.getContext('2d')
       
-      // Limpiar canvas completamente antes de renderizar
+      // Limpiar canvas completamente
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       
       // Renderizar la página del PDF
@@ -100,9 +127,6 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       await page.render(renderContext).promise
       console.log('Página renderizada exitosamente')
       
-      // Guardar el estado del PDF renderizado (sin áreas de firma)
-      setPdfImageData(ctx.getImageData(0, 0, canvas.width, canvas.height))
-      
       // Dibujar área de firma existente si hay una
       if (signatureArea) {
         drawSignatureArea(ctx, signatureArea)
@@ -111,7 +135,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     } catch (error) {
       console.error('Error renderizando página:', error)
       
-      // Fallback: mostrar un canvas en blanco con mensaje de error
+      // Fallback robusto como en DYLO
       const ctx = canvas.getContext('2d')
       canvas.width = 595
       canvas.height = 842
@@ -124,13 +148,14 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       ctx.textAlign = 'center'
       ctx.fillText('Error cargando página del PDF', canvas.width / 2, canvas.height / 2)
       ctx.textAlign = 'left'
-      
-      // Guardar también el estado de error
-      setPdfImageData(ctx.getImageData(0, 0, canvas.width, canvas.height))
     }
   }
   
   const drawSignatureArea = (ctx, area) => {
+    // Guardar estado del contexto
+    ctx.save()
+    
+    // Dibujar borde del área de firma
     ctx.strokeStyle = '#3b82f6'
     ctx.lineWidth = 2
     ctx.setLineDash([5, 5])
@@ -145,6 +170,9 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     ctx.font = '12px Arial'
     ctx.setLineDash([])
     ctx.fillText('Área de firma', area.x + 5, area.y + 15)
+    
+    // Restaurar estado del contexto
+    ctx.restore()
   }
   
   const getMousePos = (e) => {
@@ -170,7 +198,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   }
   
   const handleMouseMove = (e) => {
-    if (!isDrawing || !pdfImageData) return
+    if (!isDrawing) return
     
     const pos = getMousePos(e)
     const rect = {
@@ -182,13 +210,37 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     
     setCurrentRect(rect)
     
-    // Restaurar la imagen original del PDF desde el cache
+    // Re-renderizar página y dibujar rectángulo temporal
+    renderPageWithTempRect(rect)
+  }
+  
+  const renderPageWithTempRect = async (tempRect) => {
     const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    ctx.putImageData(pdfImageData, 0, 0)
+    if (!canvas || !pdfDoc) return
     
-    // Dibujar solo el rectángulo temporal actual
-    drawSignatureArea(ctx, rect)
+    try {
+      // Re-renderizar la página base
+      const page = await pdfDoc.getPage(currentPage + 1)
+      const viewport = page.getViewport({ scale })
+      
+      const ctx = canvas.getContext('2d')
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      
+      const renderContext = {
+        canvasContext: ctx,
+        viewport: viewport
+      }
+      
+      await page.render(renderContext).promise
+      
+      // Dibujar rectángulo temporal
+      if (tempRect) {
+        drawSignatureArea(ctx, tempRect)
+      }
+      
+    } catch (error) {
+      console.error('Error re-renderizando con rectángulo temporal:', error)
+    }
   }
   
   const handleMouseUp = () => {
@@ -198,7 +250,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     
     // Validar tamaño mínimo
     if (currentRect.width < 50 || currentRect.height < 20) {
-      alert('El área de firma debe ser más grande')
+      alert('El área de firma debe ser más grande (mínimo 50×20 píxeles)')
       setCurrentRect(null)
       renderPage(currentPage)
       return
@@ -213,38 +265,76 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     renderPage(currentPage)
   }
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!signatureArea) {
       alert('Debe seleccionar un área de firma')
       return
     }
     
-    const canvas = canvasRef.current
-    
-    // Normalizar coordenadas (0-1)
-    const normalizedCoords = {
-      page: currentPage,
-      x: signatureArea.x / canvas.width,
-      y: signatureArea.y / canvas.height,
-      width: signatureArea.width / canvas.width,
-      height: signatureArea.height / canvas.height
+    try {
+      const canvas = canvasRef.current
+      
+      // Obtener dimensiones reales del PDF (no del canvas renderizado) - técnica de DYLO
+      const page = await pdfDoc.getPage(currentPage + 1)
+      const viewport = page.getViewport({ scale: 1.0 }) // Escala 1:1 para dimensiones reales
+      
+      // Calcular el factor de escala entre canvas y PDF real
+      const scaleX = viewport.width / canvas.width
+      const scaleY = viewport.height / canvas.height
+      
+      // Convertir coordenadas del canvas a coordenadas del PDF real
+      const pdfX1 = signatureArea.x * scaleX
+      const pdfY1 = signatureArea.y * scaleY
+      const pdfX2 = (signatureArea.x + signatureArea.width) * scaleX
+      const pdfY2 = (signatureArea.y + signatureArea.height) * scaleY
+      
+      // Normalizar coordenadas (dividir por dimensiones del PDF para obtener valores entre 0 y 1)
+      const normalizedX = pdfX1 / viewport.width
+      const normalizedY = pdfY1 / viewport.height
+      const normalizedWidth = (pdfX2 - pdfX1) / viewport.width
+      const normalizedHeight = (pdfY2 - pdfY1) / viewport.height
+      
+      // Validar que las coordenadas normalizadas estén en el rango correcto - validación de DYLO
+      if (normalizedX < 0 || normalizedY < 0 || normalizedX > 1 || normalizedY > 1 ||
+          normalizedWidth <= 0 || normalizedHeight <= 0 ||
+          (normalizedX + normalizedWidth) > 1 || (normalizedY + normalizedHeight) > 1) {
+        alert('Error: Las coordenadas están fuera del rango válido del documento')
+        return
+      }
+      
+      // Crear objeto de coordenadas en el formato correcto para la API de Humand
+      const coords = {
+        page: currentPage, // Mantener base 0 para consistencia interna
+        x: normalizedX,
+        y: normalizedY,
+        width: normalizedWidth,
+        height: normalizedHeight
+      }
+      
+      console.log('Coordenadas de firma calculadas:', coords)
+      
+      // Coordenadas absolutas para compatibilidad
+      const absoluteCoords = {
+        page: currentPage,
+        x: signatureArea.x,
+        y: signatureArea.y,
+        width: signatureArea.width,
+        height: signatureArea.height
+      }
+      
+      onSave({
+        normalized: coords,
+        absolute: absoluteCoords,
+        pageWidth: canvas.width,
+        pageHeight: canvas.height,
+        pdfWidth: viewport.width,
+        pdfHeight: viewport.height
+      })
+      
+    } catch (error) {
+      console.error('Error al procesar coordenadas de firma:', error)
+      alert('Error al procesar las coordenadas de firma. Intente nuevamente.')
     }
-    
-    // Coordenadas absolutas para la API
-    const absoluteCoords = {
-      page: currentPage,
-      x: signatureArea.x,
-      y: signatureArea.y,
-      width: signatureArea.width,
-      height: signatureArea.height
-    }
-    
-    onSave({
-      normalized: normalizedCoords,
-      absolute: absoluteCoords,
-      pageWidth: canvas.width,
-      pageHeight: canvas.height
-    })
   }
   
   const nextPage = () => {
@@ -279,6 +369,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
             <div className="text-center">
               <div className="spinner spinner-lg mb-4" />
               <p className="text-lg text-gray-600">Cargando PDF...</p>
+              <p className="text-sm text-gray-500 mt-2">Configurando renderizado optimizado</p>
             </div>
           </div>
         </div>
@@ -378,7 +469,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
           </div>
         </div>
         
-        {/* Instrucciones */}
+        {/* Instrucciones mejoradas */}
         <div className="p-4 bg-blue-50 border-t">
           <div className="text-sm text-blue-800">
             <strong>Instrucciones:</strong>
@@ -389,6 +480,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
               <li>El área debe tener un tamaño mínimo de 50×20 píxeles</li>
               <li>Puedes cambiar de página si el documento tiene múltiples páginas</li>
               <li>Usa el botón ⏭️ para ir directamente a la última página</li>
+              <li><strong>Nuevo:</strong> Renderizado optimizado para mejor precisión</li>
             </ul>
           </div>
         </div>
