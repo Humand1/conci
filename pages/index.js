@@ -216,10 +216,10 @@ export default function Home() {
         },
         body: JSON.stringify({
           documents: duplicatedFiles,
-          folderId: selectedFolder.id,
+          folder_id: selectedFolder.id,  // Cambio: folderId -> folder_id (snake_case)
           signatureStatus: duplicateConfig.signatureStatus,
-          signatureCoordinates: signatureCoordinates,
-          sendNotification: duplicateConfig.sendNotification
+          signature_coordinates: signatureCoordinates,  // Cambio: signatureCoordinates -> signature_coordinates (snake_case)
+          send_notification: duplicateConfig.sendNotification  // Cambio: sendNotification -> send_notification (snake_case)
         })
       })
       

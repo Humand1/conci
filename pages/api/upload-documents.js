@@ -25,10 +25,10 @@ export default async function handler(req, res) {
     // Validar parámetros de entrada
     const { 
       documents, 
-      folderId, 
+      folder_id, 
       signatureStatus = 'SIGNATURE_NOT_NEEDED',
-      signatureCoordinates = null,
-      sendNotification = false 
+      signature_coordinates = null,
+      send_notification = false 
     } = req.body
     
     if (!documents || !Array.isArray(documents) || documents.length === 0) {
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       })
     }
     
-    if (!folderId) {
+    if (!folder_id) {
       return res.status(400).json({
         error: 'Carpeta requerida',
         message: 'Debe especificar una carpeta de destino'
@@ -109,13 +109,13 @@ export default async function handler(req, res) {
         
         // Preparar coordenadas de firma si se proporcionan
         let formattedCoordinates = null
-        if (signatureCoordinates && signatureStatus === 'PENDING') {
+        if (signature_coordinates && signatureStatus === 'PENDING') {
           formattedCoordinates = [{
-            page: signatureCoordinates.page || 0,
-            x: signatureCoordinates.x || 0,
-            y: signatureCoordinates.y || 0,
-            width: signatureCoordinates.width || 100,
-            height: signatureCoordinates.height || 50
+            page: signature_coordinates.page || 0,
+            x: signature_coordinates.x || 0,
+            y: signature_coordinates.y || 0,
+            width: signature_coordinates.width || 100,
+            height: signature_coordinates.height || 50
           }]
         }
         
@@ -125,10 +125,10 @@ export default async function handler(req, res) {
           fileBuffer,
           document.filename,
           {
-            folderId,
+            folderId: folder_id,
             signatureStatus,
             signatureCoordinates: formattedCoordinates,
-            sendNotification
+            sendNotification: send_notification
           }
         )
         
