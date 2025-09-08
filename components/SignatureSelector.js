@@ -15,25 +15,60 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const [loading, setLoading] = useState(true)
   const [pdfjsLib, setPdfjsLib] = useState(null)
   
-  // Cargar PDF.js dinámicamente con configuración robusta como DYLO
+  // Cargar PDF.js usando configuración global como DYLO
   useEffect(() => {
-    const loadPDFJS = async () => {
-      if (typeof window !== 'undefined' && !pdfjsLib) {
-        try {
-          const pdfjs = await import('pdfjs-dist')
-          
-          // Configurar el worker con CDN fijo como en DYLO
-          pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-          
-          setPdfjsLib(pdfjs)
-          console.log('PDF.js cargado exitosamente con worker fijo')
-        } catch (error) {
-          console.error('Error cargando PDF.js:', error)
+    const initializePDFJS = () => {
+      if (typeof window !== 'undefined') {
+        // Verificar si pdfjsLib está disponible globalmente (como en DYLO)
+        if (typeof window.pdfjsLib !== 'undefined') {
+          // Configurar worker con la misma versión que DYLO
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+          setPdfjsLib(window.pdfjsLib)
+          console.log('PDF.js cargado desde variable global con worker compatible')
+        } else {
+          // Fallback: cargar dinámicamente pero con versión específica compatible
+          loadPDFJSDynamically()
         }
       }
     }
     
-    loadPDFJS()
+    const loadPDFJSDynamically = async () => {
+      try {
+        // Cargar versión específica compatible con el worker
+        const script = document.createElement('script')
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+        script.onload = () => {
+          if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+            setPdfjsLib(window.pdfjsLib)
+            console.log('PDF.js 3.11.174 cargado dinámicamente con worker compatible')
+          }
+        }
+        script.onerror = () => {
+          console.error('Error cargando PDF.js desde CDN')
+          // Último recurso: import dinámico
+          fallbackDynamicImport()
+        }
+        document.head.appendChild(script)
+      } catch (error) {
+        console.error('Error en carga dinámica:', error)
+        fallbackDynamicImport()
+      }
+    }
+    
+    const fallbackDynamicImport = async () => {
+      try {
+        const pdfjs = await import('pdfjs-dist')
+        // Usar worker dinámico que coincida con la versión importada
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+        setPdfjsLib(pdfjs)
+        console.log(`PDF.js ${pdfjs.version} cargado con worker dinámico compatible`)
+      } catch (error) {
+        console.error('Error en fallback de import dinámico:', error)
+      }
+    }
+    
+    initializePDFJS()
   }, [])
   
   useEffect(() => {
