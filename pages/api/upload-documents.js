@@ -110,13 +110,32 @@ export default async function handler(req, res) {
         // Preparar coordenadas de firma si se proporcionan
         let formattedCoordinates = null
         if (signature_coordinates && signatureStatus === 'PENDING') {
+          // Extraer coordenadas normalizadas del objeto complejo
+          let coords = signature_coordinates
+          
+          // Si viene con estructura compleja (normalized, absolute, etc.), extraer solo normalized
+          if (signature_coordinates.normalized) {
+            coords = signature_coordinates.normalized
+            console.log(`📍 Extrayendo coordenadas normalizadas:`, coords)
+          }
+          
+          // Calcular height si no existe (usar proporción similar al width)
+          let height = coords.height
+          if (!height && coords.width) {
+            // Usar una proporción razonable para el height basado en el width
+            height = coords.width * 0.2 // 20% del width como height por defecto
+            console.log(`📏 Height calculado automáticamente: ${height}`)
+          }
+          
           formattedCoordinates = [{
-            page: signature_coordinates.page || 0,
-            x: signature_coordinates.x || 0,
-            y: signature_coordinates.y || 0,
-            width: signature_coordinates.width || 100,
-            height: signature_coordinates.height || 50
+            page: coords.page || 0,
+            x: coords.x || 0,
+            y: coords.y || 0,
+            width: coords.width || 0.1,
+            height: height || 0.02
           }]
+          
+          console.log(`✅ Coordenadas formateadas para API:`, formattedCoordinates)
         }
         
         // DEBUG: Información antes de subir
