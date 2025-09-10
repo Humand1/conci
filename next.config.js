@@ -8,6 +8,14 @@ const nextConfig = {
     serverComponentsExternalPackages: ['pdf-lib', 'pdfjs-dist'],
   },
   
+  // Configuración de límites de tamaño para archivos grandes
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb', // Aumentar límite a 50MB para PDFs grandes
+    },
+    responseLimit: false, // Desactivar límite de respuesta
+  },
+  
   // Configuración de archivos
   webpack: (config, { isServer }) => {
     if (!isServer) {

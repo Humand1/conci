@@ -1,8 +1,12 @@
 {
   "functions": {
     "pages/api/**/*.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "limits": {
+    "duration": 60000
+  }
 }
