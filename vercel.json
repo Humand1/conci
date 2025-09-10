@@ -5,8 +5,5 @@
       "memory": 1024
     }
   },
-  "regions": ["iad1"],
-  "limits": {
-    "duration": 60000
-  }
+  "regions": ["iad1"]
 }
