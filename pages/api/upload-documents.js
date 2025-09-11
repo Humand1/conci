@@ -25,10 +25,10 @@ export default async function handler(req, res) {
     // Validar parámetros de entrada
     const { 
       documents, 
-      folder_id, 
+      folderId, 
       signatureStatus = 'SIGNATURE_NOT_NEEDED',
-      signature_coordinates = null,
-      send_notification = false 
+      signatureCoordinates = null,
+      sendNotification = false 
     } = req.body
     
     if (!documents || !Array.isArray(documents) || documents.length === 0) {
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       })
     }
     
-    if (!folder_id) {
+    if (!folderId) {
       return res.status(400).json({
         error: 'Carpeta requerida',
         message: 'Debe especificar una carpeta de destino'
@@ -109,13 +109,13 @@ export default async function handler(req, res) {
         
         // Preparar coordenadas de firma si se proporcionan
         let formattedCoordinates = null
-        if (signature_coordinates && signatureStatus === 'PENDING') {
+        if (signatureCoordinates && signatureStatus === 'PENDING') {
           // Extraer coordenadas normalizadas del objeto complejo
-          let coords = signature_coordinates
+          let coords = signatureCoordinates
           
           // Si viene con estructura compleja (normalized, absolute, etc.), extraer solo normalized
-          if (signature_coordinates.normalized) {
-            coords = signature_coordinates.normalized
+          if (signatureCoordinates.normalized) {
+            coords = signatureCoordinates.normalized
             console.log(`📍 Extrayendo coordenadas normalizadas:`, coords)
           }
           
@@ -142,10 +142,10 @@ export default async function handler(req, res) {
         console.log(`\n🔄 PROCESANDO DOCUMENTO ${i + 1}/${documents.length}`)
         console.log(`📁 Archivo: ${document.filename}`)
         console.log(`👤 Usuario: ${document.user.full_name} (ID: ${document.user.id})`)
-        console.log(`📂 Folder ID: ${folder_id}`)
+        console.log(`📂 Folder ID: ${folderId}`)
         console.log(`✍️ Signature Status: ${signatureStatus}`)
         console.log(`📍 Coordenadas formateadas:`, formattedCoordinates)
-        console.log(`✉️ Send Notification: ${send_notification}`)
+        console.log(`✉️ Send Notification: ${sendNotification}`)
         
         // Subir documento
         const uploadResult = await apiClient.uploadDocument(
@@ -153,10 +153,10 @@ export default async function handler(req, res) {
           fileBuffer,
           document.filename,
           {
-            folderId: folder_id,
+            folderId: folderId,
             signatureStatus,
             signatureCoordinates: formattedCoordinates,
-            sendNotification: send_notification
+            sendNotification: sendNotification
           }
         )
         
