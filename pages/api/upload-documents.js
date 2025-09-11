@@ -135,6 +135,7 @@ export default async function handler(req, res) {
             console.log(`📏 Height calculado automáticamente: ${height}`)
           }
           
+          // Crear array con un solo objeto de coordenadas (formato esperado por la API)
           formattedCoordinates = [{
             page: coords.page || 0,
             x: coords.x || 0,
