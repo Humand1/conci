@@ -1,4 +1,4 @@
-// Componente para seleccionar coordenadas de firma en PDF - Mejorado con técnicas de DYLO
+// Componente para seleccionar coordenadas de firma en PDF
 import { useState, useRef, useEffect } from 'react'
 import { X, PenTool, Save, RotateCcw, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
 
@@ -9,22 +9,22 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [signatureArea, setSignatureArea] = useState(null)
-  const [scale, setScale] = useState(1.5) // Escala fija como en DYLO
+  const [scale, setScale] = useState(1.5) // Escala fija para consistencia
   const [loading, setLoading] = useState(true)
   const [pdfjsLib, setPdfjsLib] = useState(null)
   
-  // Estados de interacción como DYLO
+  // Estados de interacción
   const [signatureMode, setSignatureMode] = useState('none') // 'none', 'selecting', 'creating'
   const [dragStartX, setDragStartX] = useState(0)
   const [dragStartY, setDragStartY] = useState(0)
   
-  // Cargar PDF.js usando configuración global como DYLO
+  // Cargar PDF.js usando configuración global
   useEffect(() => {
     const initializePDFJS = () => {
       if (typeof window !== 'undefined') {
-        // Verificar si pdfjsLib está disponible globalmente (como en DYLO)
+        // Verificar si pdfjsLib está disponible globalmente
         if (typeof window.pdfjsLib !== 'undefined') {
-          // Configurar worker con la misma versión que DYLO
+          // Configurar worker con versión específica
           window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
           setPdfjsLib(window.pdfjsLib)
           console.log('PDF.js cargado desde variable global con worker compatible')
@@ -86,7 +86,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     try {
       console.log('Iniciando carga de PDF...')
       
-      // Cargar PDF usando PDF.js con manejo robusto como DYLO
+      // Cargar PDF usando PDF.js con manejo robusto
       const arrayBuffer = await pdfFile.arrayBuffer()
       const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
       const pdf = await loadingTask.promise
@@ -97,7 +97,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       
       console.log(`PDF cargado: ${pdf.numPages} páginas`)
       
-      // Renderizar la primera página inmediatamente como en DYLO
+      // Renderizar la primera página inmediatamente
       await renderPage(0, pdf)
       
       // Solo ocultar loading después de que la página esté renderizada
@@ -111,7 +111,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
   }
   
   const handlePDFLoadError = () => {
-    // Fallback robusto como en DYLO
+    // Fallback robusto
     const canvas = canvasRef.current
     if (canvas) {
       const ctx = canvas.getContext('2d')
@@ -145,7 +145,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       // Obtener página (PDF.js usa índices basados en 1)
       const page = await pdfDocument.getPage(pageNum + 1)
       
-      // Usar escala fija como en DYLO para consistencia
+      // Usar escala fija para consistencia
       const viewport = page.getViewport({ scale })
       
       // Configurar canvas con dimensiones del viewport
@@ -174,7 +174,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     } catch (error) {
       console.error('Error renderizando página:', error)
       
-      // Fallback robusto como en DYLO
+      // Fallback robusto
       const ctx = canvas.getContext('2d')
       canvas.width = 595
       canvas.height = 842
@@ -214,7 +214,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     ctx.restore()
   }
   
-  // Configurar event listeners como DYLO
+  // Configurar event listeners
   useEffect(() => {
     const handleDocumentMouseMove = (e) => {
       if (signatureMode === 'creating') {
@@ -287,7 +287,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       }
     }
     
-    // Agregar event listeners al document como DYLO
+    // Agregar event listeners al document
     document.addEventListener('mousemove', handleDocumentMouseMove)
     document.addEventListener('mouseup', handleDocumentMouseUp)
     
@@ -313,7 +313,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       overlay.style.display = 'none'
     }
     
-    // Iniciar modo de creación como DYLO
+    // Iniciar modo de creación
     setSignatureMode('creating')
     setDragStartX(mouseX)
     setDragStartY(mouseY)
@@ -367,7 +367,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     try {
       const canvas = canvasRef.current
       
-      // Obtener dimensiones reales del PDF (no del canvas renderizado) - técnica de DYLO
+      // Obtener dimensiones reales del PDF (no del canvas renderizado)
       const page = await pdfDoc.getPage(currentPage + 1)
       const viewport = page.getViewport({ scale: 1.0 }) // Escala 1:1 para dimensiones reales
       
@@ -387,7 +387,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       const normalizedWidth = (pdfX2 - pdfX1) / viewport.width
       const normalizedHeight = (pdfY2 - pdfY1) / viewport.height
       
-      // Validar que las coordenadas normalizadas estén en el rango correcto - validación de DYLO
+      // Validar que las coordenadas normalizadas estén en el rango correcto
       if (normalizedX < 0 || normalizedY < 0 || normalizedX > 1 || normalizedY > 1 ||
           normalizedWidth <= 0 || normalizedHeight <= 0 ||
           (normalizedX + normalizedWidth) > 1 || (normalizedY + normalizedHeight) > 1) {
@@ -572,7 +572,7 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
                 className="cursor-crosshair max-w-full h-auto"
                 style={{ maxHeight: '70vh' }}
               />
-              {/* Div overlay para mostrar área de selección - como DYLO */}
+              {/* Div overlay para mostrar área de selección */}
               <div
                 ref={overlayRef}
                 style={{
@@ -597,7 +597,6 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
               <li>El área debe tener un tamaño mínimo de 50×20 píxeles</li>
               <li>Puedes cambiar de página si el documento tiene múltiples páginas</li>
               <li>Usa el botón ⏭️ para ir directamente a la última página</li>
-              <li><strong>✅ Sin titileo:</strong> Arquitectura optimizada basada en DYLO</li>
             </ul>
           </div>
         </div>
