@@ -22,14 +22,22 @@ export default async function handler(req, res) {
       })
     }
     
-    // Validar parámetros de entrada
+    // Validar parámetros de entrada (soportar tanto camelCase como snake_case)
     const { 
       documents, 
       folderId, 
+      folder_id,  // Compatibilidad con snake_case del frontend
       signatureStatus = 'SIGNATURE_NOT_NEEDED',
       signatureCoordinates = null,
-      sendNotification = false 
+      signature_coordinates = null,  // Compatibilidad con snake_case del frontend
+      sendNotification = false,
+      send_notification = false  // Compatibilidad con snake_case del frontend
     } = req.body
+    
+    // Usar el valor correcto (priorizar camelCase, fallback a snake_case)
+    const finalFolderId = folderId || folder_id
+    const finalSignatureCoordinates = signatureCoordinates || signature_coordinates
+    const finalSendNotification = sendNotification || send_notification
     
     if (!documents || !Array.isArray(documents) || documents.length === 0) {
       return res.status(400).json({
@@ -38,7 +46,7 @@ export default async function handler(req, res) {
       })
     }
     
-    if (!folderId) {
+    if (!finalFolderId) {
       return res.status(400).json({
         error: 'Carpeta requerida',
         message: 'Debe especificar una carpeta de destino'
@@ -109,13 +117,13 @@ export default async function handler(req, res) {
         
         // Preparar coordenadas de firma si se proporcionan
         let formattedCoordinates = null
-        if (signatureCoordinates && signatureStatus === 'PENDING') {
+        if (finalSignatureCoordinates && signatureStatus === 'PENDING') {
           // Extraer coordenadas normalizadas del objeto complejo
-          let coords = signatureCoordinates
+          let coords = finalSignatureCoordinates
           
           // Si viene con estructura compleja (normalized, absolute, etc.), extraer solo normalized
-          if (signatureCoordinates.normalized) {
-            coords = signatureCoordinates.normalized
+          if (finalSignatureCoordinates.normalized) {
+            coords = finalSignatureCoordinates.normalized
             console.log(`📍 Extrayendo coordenadas normalizadas:`, coords)
           }
           
@@ -142,10 +150,10 @@ export default async function handler(req, res) {
         console.log(`\n🔄 PROCESANDO DOCUMENTO ${i + 1}/${documents.length}`)
         console.log(`📁 Archivo: ${document.filename}`)
         console.log(`👤 Usuario: ${document.user.full_name} (ID: ${document.user.id})`)
-        console.log(`📂 Folder ID: ${folderId}`)
+        console.log(`📂 Folder ID: ${finalFolderId}`)
         console.log(`✍️ Signature Status: ${signatureStatus}`)
         console.log(`📍 Coordenadas formateadas:`, formattedCoordinates)
-        console.log(`✉️ Send Notification: ${sendNotification}`)
+        console.log(`✉️ Send Notification: ${finalSendNotification}`)
         
         // Subir documento
         const uploadResult = await apiClient.uploadDocument(
@@ -153,10 +161,10 @@ export default async function handler(req, res) {
           fileBuffer,
           document.filename,
           {
-            folderId: folderId,
+            folderId: finalFolderId,
             signatureStatus,
             signatureCoordinates: formattedCoordinates,
-            sendNotification: sendNotification
+            sendNotification: finalSendNotification
           }
         )
         
