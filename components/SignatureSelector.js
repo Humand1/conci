@@ -80,6 +80,47 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
     }
   }, [pdfFile, pdfjsLib])
   
+  // Efecto adicional para asegurar renderizado inicial cuando el canvas esté disponible
+  useEffect(() => {
+    if (pdfDoc && canvasRef.current && !loading) {
+      // Verificar si el canvas está vacío y forzar renderizado si es necesario
+      ensureInitialRender()
+    }
+  }, [pdfDoc, loading])
+  
+  const ensureInitialRender = async () => {
+    const canvas = canvasRef.current
+    if (!canvas || !pdfDoc) return
+    
+    // Verificar si el canvas está vacío (sin contenido renderizado)
+    const ctx = canvas.getContext('2d')
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const isEmpty = imageData.data.every(pixel => pixel === 0)
+    
+    if (isEmpty || canvas.width === 0 || canvas.height === 0) {
+      console.log('Canvas vacío detectado, forzando renderizado inicial...')
+      
+      // Pequeño delay para asegurar que el DOM esté completamente listo
+      setTimeout(async () => {
+        try {
+          await renderPage(currentPage, pdfDoc)
+          console.log('Renderizado inicial forzado exitosamente')
+        } catch (error) {
+          console.error('Error en renderizado inicial forzado:', error)
+          // Retry una vez más después de un delay mayor
+          setTimeout(async () => {
+            try {
+              await renderPage(currentPage, pdfDoc)
+              console.log('Renderizado inicial retry exitoso')
+            } catch (retryError) {
+              console.error('Error en retry de renderizado inicial:', retryError)
+            }
+          }, 500)
+        }
+      }, 100)
+    }
+  }
+  
   const loadPDF = async () => {
     if (!pdfFile) return
     
@@ -97,11 +138,21 @@ export default function SignatureSelector({ pdfFile, onClose, onSave }) {
       
       console.log(`PDF cargado: ${pdf.numPages} páginas`)
       
-      // Renderizar la primera página inmediatamente
-      await renderPage(0, pdf)
-      
-      // Solo ocultar loading después de que la página esté renderizada
-      setLoading(false)
+      // Esperar un momento para que el estado se actualice y el canvas esté listo
+      setTimeout(async () => {
+        try {
+          // Renderizar la primera página inmediatamente
+          await renderPage(0, pdf)
+          console.log('Renderizado inicial completado en loadPDF')
+          
+          // Solo ocultar loading después de que la página esté renderizada
+          setLoading(false)
+        } catch (renderError) {
+          console.error('Error en renderizado inicial:', renderError)
+          // Aún así ocultar loading para que el useEffect de ensureInitialRender pueda actuar
+          setLoading(false)
+        }
+      }, 50)
       
     } catch (error) {
       console.error('Error cargando PDF:', error)
